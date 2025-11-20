@@ -55,6 +55,40 @@ response = agent.run("How many white Levi t-shirts do we have?")
 print(response)
 ```
 
+🤖 agent.run() Output
+When you run with verbose=True, here's what prints:
+> Entering new SQL Agent Executor chain...
+
+Invoking: `sql_db_list_tables` with `{}`
+discounts, t_shirts
+
+Invoking: `sql_db_schema` with `{'table_names': 't_shirts'}`
+CREATE TABLE t_shirts (
+    t_shirt_id INTEGER NOT NULL AUTO_INCREMENT,
+    brand ENUM('Van Huesen','Levi','Nike','Adidas'),
+    color ENUM('Red','Blue','Black','White'),
+    size ENUM('XS','S','M','L','XL'),
+    price INTEGER,
+    stock_quantity INTEGER
+)
+3 rows from t_shirts table:
+t_shirt_id | brand | color | size | price | stock_quantity
+1 | Van Huesen | Red | XS | 25 | 97
+2 | Van Huesen | Red | S | 39 | 72
+3 | Van Huesen | Red | M | 21 | 43
+
+Invoking: `sql_db_query_checker` with `{'query': 'SELECT SUM(stock_quantity) AS total_stock FROM t_shirts;'}`
+✓ Query validated
+
+Invoking: `sql_db_query` with `{'query': 'SELECT SUM(stock_quantity) AS total_stock FROM t_shirts;'}`
+
+> Finished chain.
+
+There are a total of 4,484 t-shirts in stock.
+Generated SQL:
+sqlSELECT SUM(stock_quantity) AS total_stock FROM t_shirts;
+Final Answer: There are a total of 4,484 t-shirts in stock.
+
 ## 📊 Output
 
 <img width="615" height="73" alt="image" src="https://github.com/user-attachments/assets/62b5d906-5b3f-4f8b-bb32-34f8d610e727" />
