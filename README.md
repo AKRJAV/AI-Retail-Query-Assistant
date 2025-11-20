@@ -55,8 +55,8 @@ response = agent.run("How many white Levi t-shirts do we have?")
 print(response)
 ```
 
-🤖 agent.run() Output
-When you run with verbose=True, here's what prints:
+## 🤖 Agent Output
+
 > Entering new SQL Agent Executor chain...
 
 Invoking: `sql_db_list_tables` with `{}`
