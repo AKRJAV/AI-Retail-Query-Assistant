@@ -1,6 +1,6 @@
 # LangChain SQL Agent - Retail Store Inventory
 
-An AI powered SQL agent that converts natural language questions into SQL queries and fetches data from MySQL database. Built with LangChain, OpenAI GPT-4o-mini, and **Langfuse** for LLM monitoring and analytics.
+An AI powered SQL agent that converts natural language questions into SQL queries and fetches data from MySQL database. Built with LangChain, OpenAI GPT-4o-mini, and Langfuse for LLM monitoring and analytics.
 
 ## 🎯 What It Does
 
