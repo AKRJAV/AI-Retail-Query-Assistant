@@ -1,117 +1,144 @@
 # LangChain SQL Agent - Retail Store Inventory
 
-An AI powered SQL agent that converts natural language questions into SQL queries and fetches data from MySQL database. Built with LangChain and OpenAI GPT-4o-mini.
+An AI powered SQL agent that converts natural language questions into SQL queries and fetches data from MySQL database. Built with LangChain, OpenAI GPT-4o-mini, and **Langfuse** for LLM monitoring and analytics.
 
 ## 🎯 What It Does
 
 Ask questions in plain English instead of writing SQL. The agent automatically:
+
 1. Understands your question
 2. Generates the correct SQL query
 3. Validates the query
 4. Executes it against the database
 5. Returns the result in natural language
+6. **Tracks performance metrics via Langfuse**
 
 ## 💻 Tech Stack
 
 - **LLM**: OpenAI GPT-4o-mini
 - **Framework**: LangChain
 - **Database**: MySQL (PyMySQL)
+- **Monitoring**: Langfuse (LLM tracing & analytics)
 - **Export**: Excel with Pandas
-- **Python**: 3.8+
 
 ## 📋 Real Examples
 
-| Question | SQL Generated | Answer |
-|----------|---------------|--------|
-| How many t-shirts are in stock? | `SELECT SUM(stock_quantity) FROM t_shirts;` | 4,484 t-shirts |
-| How many white Levi t-shirts? | `SELECT SUM(stock_quantity) FROM t_shirts WHERE brand='Levi' AND color='White';` | 301 t-shirts |
-| Revenue from Levi sales with discounts? | `SELECT SUM((price * (1 - pct_discount/100)) * stock_quantity) FROM t_shirts JOIN discounts...` | $10,000.00 |
-| Total inventory value for size S? | `SELECT SUM(price * stock_quantity) FROM t_shirts WHERE size='S';` | $22,125 |
+| Question | Answer |
+|----------|--------|
+| How many t-shirts are in stock? | 4,484 t-shirts |
+| How many white Levi t-shirts? | 301 t-shirts |
+| Revenue from Levi sales with discounts? | $20,240.75 |
+| Total inventory value for size S? | $22,125 |
 
-## 🗄️ Database
+## 🗄️ Database Schema
 
-**t_shirts** table: product_id, brand (Van Huesen, Levi, Nike, Adidas), color (Red, Blue, Black, White), size (XS-XL), price (10-50), stock_quantity
+**t_shirts table:**
+- `brand` (Van Huesen, Levi, Nike, Adidas)
+- `color` (Red, Blue, Black, White)
+- `size` (XS, S, M, L, XL)
+- `price` (10-50)
+- `stock_quantity`
 
-**discounts** table: discount_id, t_shirt_id (foreign key), pct_discount (0-100%)
+**discounts table:**
+- `t_shirt_id` (foreign key)
+- `pct_discount` (0-100%)
 
 ## 🚀 Quick Start
+
+### Installation
+
+```bash
+pip install langchain langchain-openai langchain-community pymysql pandas openpyxl langfuse
+```
+
+### Basic Usage
 
 ```python
 from langchain_openai import ChatOpenAI
 from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
+from langfuse.callback import CallbackHandler
+import os
+
+# Set Langfuse credentials
+os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-xxxx"
+os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-xxxx"
+os.environ["LANGFUSE_BASE_URL"] = "https://cloud.langfuse.com"
+
+# Initialize Langfuse handler
+langfuse_handler = CallbackHandler()
 
 # Setup
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4, api_key="your-key")
-db = SQLDatabase.from_uri("mysql+pymysql://root:password@localhost/atliq_tshirts")
-toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4, api_key="sk-xxxx")
+db = SQLDatabase.from_uri("mysql+pymysql://user:password@localhost/db_name")
 
 # Create agent
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 agent = create_sql_agent(llm=llm, toolkit=toolkit, verbose=True, agent_type="openai-tools")
 
-# Query
-response = agent.run("How many white Levi t-shirts do we have?")
-print(response)
-```
-
-## 🤖 Agent Output
-
-> Entering new SQL Agent Executor chain...
-
-Invoking: `sql_db_list_tables` with `{}`
-discounts, t_shirts
-
-Invoking: `sql_db_schema` with `{'table_names': 't_shirts'}`
-CREATE TABLE t_shirts (
-    t_shirt_id INTEGER NOT NULL AUTO_INCREMENT,
-    brand ENUM('Van Huesen','Levi','Nike','Adidas'),
-    color ENUM('Red','Blue','Black','White'),
-    size ENUM('XS','S','M','L','XL'),
-    price INTEGER,
-    stock_quantity INTEGER
+# Query with Langfuse tracking
+response = agent.invoke(
+    {"input": "How many white Levi t-shirts do we have?"},
+    config={"callbacks": [langfuse_handler]}
 )
-3 rows from t_shirts table:
-t_shirt_id | brand | color | size | price | stock_quantity
-1 | Van Huesen | Red | XS | 25 | 97
-2 | Van Huesen | Red | S | 39 | 72
-3 | Van Huesen | Red | M | 21 | 43
-
-Invoking: `sql_db_query_checker` with `{'query': 'SELECT SUM(stock_quantity) AS total_stock FROM t_shirts;'}`
-✓ Query validated
-
-Invoking: `sql_db_query` with `{'query': 'SELECT SUM(stock_quantity) AS total_stock FROM t_shirts;'}`
-
-> Finished chain.
-
-There are a total of 4,484 t-shirts in stock.
-Generated SQL:
-sqlSELECT SUM(stock_quantity) AS total_stock FROM t_shirts;
-Final Answer: There are a total of 4,484 t-shirts in stock.
-
-## 📊 Output
-
-<img width="615" height="73" alt="image" src="https://github.com/user-attachments/assets/62b5d906-5b3f-4f8b-bb32-34f8d610e727" />
-
-
-Results are automatically saved to `query_result.xlsx`:
-- **Result**: The answer from the database
-- **User Prompt**: Your original question
-- **Timestamp**: When the query was executed
+print(response["output"])
+```
 
 ## ✨ Key Features
 
 - ✅ Natural language to SQL conversion
 - ✅ Automatic query validation before execution
 - ✅ Handles joins and complex calculations
-- ✅ Verbose mode shows AI reasoning
+- ✅ Real-time LLM tracing with Langfuse
+- ✅ Performance analytics & cost tracking
+- ✅ Error tracking and debugging
 - ✅ Excel export with metadata
-- ✅ URL-encoded password support
-- ✅ Sample data shown to LLM for context
+- ✅ Verbose mode shows AI reasoning
 
-## ⚙️ Installation
+## 📈 Langfuse Dashboard
 
-```bash
-pip install langchain langchain-openai langchain-community pymysql pandas openpyxl
+All queries are automatically logged to Langfuse. View at `https://cloud.langfuse.com`:
+- **Traces**: Complete execution flow
+- **Tokens**: Input/output token usage
+- **Latency**: Response times
+- **Costs**: API expenses
+- **Errors**: Failed queries
+
+## 🔧 Configuration
+
+### Environment Setup
+
+```python
+os.environ["LANGFUSE_SECRET_KEY"] = "your_secret_key"
+os.environ["LANGFUSE_PUBLIC_KEY"] = "your_public_key"
+os.environ["LANGFUSE_BASE_URL"] = "https://cloud.langfuse.com"
 ```
 
+### Database Connection
+
+```python
+db = SQLDatabase.from_uri("mysql+pymysql://user:password@host/database")
+```
+
+## 📝 Example Queries
+
+```
+"How many t-shirts are in stock?"
+"What's the total inventory value?"
+"How many white Levi t-shirts do we have?"
+"If I sell all Levi t-shirts with discounts, what revenue would I generate?"
+"Which brand has the highest stock quantity?"
+```
+
+## ⚠️ Troubleshooting
+
+**Database Connection Error**: Verify credentials and ensure MySQL is running
+
+**Langfuse Not Recording**: Check credentials at Langfuse dashboard
+
+**OpenAI API Error**: Verify API key and quota
+
+
+## OUTPUT Excel
+<img width="626" height="92" alt="image" src="https://github.com/user-attachments/assets/b1ffb637-150c-4189-a9bf-100b3e9f3a61" />
